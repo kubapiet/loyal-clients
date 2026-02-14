@@ -96,6 +96,22 @@ export default function CardDetailPage() {
     setTxLoading(false);
   }
 
+  async function handleDeleteTransaction(txId: string) {
+    if (!confirm(t("common.confirm_delete", locale))) return;
+    try {
+      const res = await fetch(`/api/transactions/${txId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: t("common.success", locale) });
+        fetchCard();
+      } else {
+        const data = await res.json();
+        toast({ title: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: t("common.error", locale), variant: "destructive" });
+    }
+  }
+
   async function handleDelete() {
     if (!confirm(t("common.confirm_delete", locale))) return;
     try {
@@ -271,6 +287,7 @@ export default function CardDetailPage() {
                   <TableHead className="text-right">{t("transactions.amount", locale)}</TableHead>
                   <TableHead className="text-right">{t("transactions.points", locale)}</TableHead>
                   <TableHead className="hidden sm:table-cell">{t("transactions.description", locale)}</TableHead>
+                  <TableHead className="text-right w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -287,6 +304,11 @@ export default function CardDetailPage() {
                       {tx.points >= 0 ? "+" : ""}{tx.points}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground">{tx.description || "-"}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteTransaction(tx.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
