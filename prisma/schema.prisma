@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  address   String?
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  loyaltyCards  LoyaltyCard[]
+  discountTiers DiscountTier[]
+  promotions    Promotion[]
+
+  @@index([email])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      UserRole @default(EMPLOYEE)
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([companyId])
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+}
+
+model LoyaltyCard {
+  id          String   @id @default(cuid())
+  cardNumber  String   @unique
+  firstName   String
+  lastName    String
+  email       String
+  phone       String?
+  totalPoints Int      @default(0)
+  companyId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([cardNumber])
+  @@index([companyId])
+  @@index([email])
+  @@index([companyId, lastName])
+}
+
+model Transaction {
+  id            String          @id @default(cuid())
+  amount        Float
+  points        Int
+  type          TransactionType
+  description   String?
+  loyaltyCardId String
+  createdAt     DateTime        @default(now())
+
+  loyaltyCard LoyaltyCard @relation(fields: [loyaltyCardId], references: [id], onDelete: Cascade)
+
+  @@index([loyaltyCardId])
+  @@index([createdAt])
+}
+
+enum TransactionType {
+  PURCHASE
+  REFUND
+  MANUAL_ADD
+  MANUAL_SUBTRACT
+}
+
+model DiscountTier {
+  id              String @id @default(cuid())
+  minPoints       Int
+  discountPercent Float
+  label           String?
+  companyId       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, minPoints])
+}
+
+model Promotion {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  couponCode  String?
+  companyId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([startDate, endDate])
+}
+
+model MagicLink {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  cardId    String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email])
+}
