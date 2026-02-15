@@ -17,15 +17,39 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const skip = (page - 1) * limit;
 
+    const search = searchParams.get("search");
+
     const where = {
-      loyaltyCard: { companyId },
+      loyaltyCard: {
+        companyId,
+        ...(search && {
+          OR: [
+            { firstName: { contains: search, mode: "insensitive" as const } },
+            { lastName: { contains: search, mode: "insensitive" as const } },
+            { cardNumber: { contains: search, mode: "insensitive" as const } },
+          ],
+        }),
+      },
       ...(cardId && { loyaltyCardId: cardId }),
     };
+
+    const sortBy = searchParams.get("sortBy") || "createdAt";
+    const sortDir = searchParams.get("sortDir") === "asc" ? "asc" : "desc";
+
+    const allowedSortFields: Record<string, any> = {
+      createdAt: { createdAt: sortDir },
+      amount: { amount: sortDir },
+      points: { points: sortDir },
+      type: { type: sortDir },
+      customer: { loyaltyCard: { lastName: sortDir } },
+    };
+
+    const orderBy = allowedSortFields[sortBy] || { createdAt: "desc" };
 
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit,
         include: {

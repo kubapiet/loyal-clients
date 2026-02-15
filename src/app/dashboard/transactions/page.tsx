@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Download, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, Download, Plus, Search, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useLocale } from "@/components/providers";
 import { t } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/utils";
@@ -29,6 +29,10 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
@@ -40,13 +44,23 @@ export default function TransactionsPage() {
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/transactions?page=${page}&limit=20`);
+      const params = new URLSearchParams({ page: String(page), limit: "20", sortBy, sortDir });
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/transactions?${params}`);
       const data = await res.json();
       setTransactions(data.transactions || []);
       setTotalPages(data.pagination?.totalPages || 1);
     } catch {}
     setLoading(false);
-  }, [page]);
+  }, [page, search, sortBy, sortDir]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setPage(1);
+      setSearch(searchInput);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
 
   useEffect(() => {
     fetchTransactions();
@@ -128,6 +142,23 @@ export default function TransactionsPage() {
     } catch {
       toast({ title: t("common.error", locale), variant: "destructive" });
     }
+  }
+
+  function toggleSort(field: string) {
+    if (sortBy === field) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortDir(field === "createdAt" ? "desc" : "asc");
+    }
+    setPage(1);
+  }
+
+  function SortIcon({ field }: { field: string }) {
+    if (sortBy !== field) return <ArrowUpDown className="ml-1 h-3 w-3 text-muted-foreground/50" />;
+    return sortDir === "asc"
+      ? <ArrowUp className="ml-1 h-3 w-3" />
+      : <ArrowDown className="ml-1 h-3 w-3" />;
   }
 
   const typeLabels: Record<string, string> = {
@@ -286,6 +317,20 @@ export default function TransactionsPage() {
         </DialogContent>
       </Dialog>
 
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          className="pl-10"
+          placeholder={
+            locale === "pl"
+              ? "Szukaj po nazwisku lub numerze karty..."
+              : "Search by name or card number..."
+          }
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
+      </div>
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -298,12 +343,22 @@ export default function TransactionsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("transactions.date", locale)}</TableHead>
-                  <TableHead>{locale === "pl" ? "Klient" : "Customer"}</TableHead>
-                  <TableHead>{t("transactions.type", locale)}</TableHead>
-                  <TableHead className="text-right">{t("transactions.amount", locale)}</TableHead>
-                  <TableHead className="text-right">{t("transactions.points", locale)}</TableHead>
-                  <TableHead className="text-right w-[60px]"></TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("createdAt")}>
+                    <span className="inline-flex items-center">{t("transactions.date", locale)}<SortIcon field="createdAt" /></span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("customer")}>
+                    <span className="inline-flex items-center">{locale === "pl" ? "Klient" : "Customer"}<SortIcon field="customer" /></span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("type")}>
+                    <span className="inline-flex items-center">{t("transactions.type", locale)}<SortIcon field="type" /></span>
+                  </TableHead>
+                  <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("amount")}>
+                    <span className="inline-flex items-center justify-end w-full">{t("transactions.amount", locale)}<SortIcon field="amount" /></span>
+                  </TableHead>
+                  <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("points")}>
+                    <span className="inline-flex items-center justify-end w-full">{t("transactions.points", locale)}<SortIcon field="points" /></span>
+                  </TableHead>
+                  <TableHead className="w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

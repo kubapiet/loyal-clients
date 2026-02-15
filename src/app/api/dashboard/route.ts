@@ -68,13 +68,19 @@ export async function GET(req: NextRequest) {
       `,
     ]);
 
+    const serializedTransactions = (transactionsByMonth as any[]).map((item: any) => ({
+      month: item.month,
+      total_amount: Number(item.total_amount) || 0,
+      count: Number(item.count) || 0,
+    }));
+
     return NextResponse.json({
       totalCards,
       totalPoints: totalPointsResult._sum.totalPoints || 0,
       activePromotions,
       recentTransactions,
       topCustomers,
-      transactionsByMonth,
+      transactionsByMonth: serializedTransactions,
     });
   } catch (error) {
     console.error("Dashboard error:", error);

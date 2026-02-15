@@ -36,9 +36,17 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetch("/api/dashboard")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("API error");
+        return res.json();
+      })
       .then((d) => {
-        setData(d);
+        setData({
+          ...d,
+          topCustomers: d.topCustomers ?? [],
+          recentTransactions: d.recentTransactions ?? [],
+          transactionsByMonth: d.transactionsByMonth ?? [],
+        });
         setLoading(false);
       })
       .catch(() => setLoading(false));
