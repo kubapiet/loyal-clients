@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Plus, Loader2, QrCode, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, QrCode, Trash2, Award } from "lucide-react";
 import { useLocale } from "@/components/providers";
 import { t } from "@/lib/i18n";
 import { formatCurrency, formatPoints } from "@/lib/utils";
@@ -209,14 +209,48 @@ export default function CardDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Points */}
+        {/* Points & Discount Tier */}
         <Card>
           <CardHeader>
             <CardTitle>{t("cards.points", locale)}</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center">
+          <CardContent className="flex flex-col items-center gap-4">
             <p className="text-5xl font-bold text-primary">{formatPoints(card.totalPoints)}</p>
-            <p className="text-muted-foreground mt-2">{locale === "pl" ? "punktów" : "points"}</p>
+            <p className="text-muted-foreground">{locale === "pl" ? "punktów" : "points"}</p>
+
+            <Separator />
+
+            <div className="w-full space-y-3">
+              <div className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                <p className="text-sm font-medium">
+                  {locale === "pl" ? "Próg rabatowy" : "Discount tier"}
+                </p>
+              </div>
+              {card.discountTier ? (
+                <div className="rounded-md border bg-primary/5 p-3 text-center">
+                  <p className="text-lg font-bold text-primary">
+                    -{card.discountTier.discountPercent}%
+                  </p>
+                  {card.discountTier.label && (
+                    <p className="text-sm text-muted-foreground">{card.discountTier.label}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {locale === "pl" ? "od" : "from"} {formatPoints(card.discountTier.minPoints)} pkt
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center">
+                  {locale === "pl" ? "Brak przysługującego progu" : "No tier reached yet"}
+                </p>
+              )}
+              {card.nextDiscountTier && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {locale === "pl" ? "Następny próg" : "Next tier"}: <span className="font-medium">-{card.nextDiscountTier.discountPercent}%</span>
+                  {" "}({locale === "pl" ? "brakuje" : "need"} {formatPoints(card.nextDiscountTier.minPoints - card.totalPoints)} pkt)
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

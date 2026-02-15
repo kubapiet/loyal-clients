@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Search, Loader2, Eye, Download } from "lucide-react";
+import { Plus, Search, Loader2, Download } from "lucide-react";
 import { useLocale } from "@/components/providers";
 import { t } from "@/lib/i18n";
 import { formatPoints } from "@/lib/utils";
@@ -26,6 +26,7 @@ import { format } from "date-fns";
 
 export default function CardsPage() {
   const { locale } = useLocale();
+  const router = useRouter();
   const { toast } = useToast();
   const [cards, setCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,12 +173,15 @@ export default function CardsPage() {
                   <TableHead className="hidden sm:table-cell">{t("cards.email", locale)}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("cards.phone", locale)}</TableHead>
                   <TableHead className="text-right">{t("cards.points", locale)}</TableHead>
-                  <TableHead className="text-right">{t("cards.details", locale)}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {cards.map((card) => (
-                  <TableRow key={card.id}>
+                  <TableRow
+                    key={card.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => router.push(`/dashboard/cards/${card.id}`)}
+                  >
                     <TableCell>
                       <div>
                         <p className="font-medium">{card.firstName} {card.lastName}</p>
@@ -188,13 +192,6 @@ export default function CardsPage() {
                     <TableCell className="hidden md:table-cell">{card.phone || "-"}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant="secondary">{formatPoints(card.totalPoints)} pkt</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/dashboard/cards/${card.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
                     </TableCell>
                   </TableRow>
                 ))}

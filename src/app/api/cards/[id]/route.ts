@@ -28,7 +28,19 @@ export async function GET(
       return NextResponse.json({ error: "Karta nie znaleziona" }, { status: 404 });
     }
 
-    return NextResponse.json(card);
+    const discountTiers = await prisma.discountTier.findMany({
+      where: { companyId },
+      orderBy: { minPoints: "asc" },
+    });
+
+    const currentTier = discountTiers
+      .filter((tier) => card.totalPoints >= tier.minPoints)
+      .at(-1) ?? null;
+
+    const nextTier = discountTiers
+      .find((tier) => tier.minPoints > card.totalPoints) ?? null;
+
+    return NextResponse.json({ ...card, discountTier: currentTier, nextDiscountTier: nextTier });
   } catch (error) {
     console.error("Get card error:", error);
     return NextResponse.json({ error: "Wystąpił błąd" }, { status: 500 });
