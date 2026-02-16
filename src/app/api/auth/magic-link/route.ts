@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { sendMagicLinkEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,15 +37,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // In production, send email with the magic link
     const magicLinkUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/customer/verify?token=${token}`;
 
-    // For development, log the link
-    console.log("Magic Link URL:", magicLinkUrl);
+    try {
+      await sendMagicLinkEmail(card.email, magicLinkUrl);
+    } catch (emailError) {
+      console.error("Failed to send magic link email:", emailError);
+      return NextResponse.json(
+        { error: "Nie udało się wysłać maila z linkiem" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       message: "Link logowania został wysłany na email",
-      // Only include in development
       ...(process.env.NODE_ENV === "development" && { debugToken: token }),
     });
   } catch (error) {
