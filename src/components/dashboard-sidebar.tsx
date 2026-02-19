@@ -42,11 +42,15 @@ export function DashboardSidebar() {
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const role = (session?.user as any)?.role;
-  const canAccessLogs = role === "COMPANY" || role === "ADMIN";
-  const canManageUsers = role === "ADMIN";
+  const isAdmin = role === "ADMIN";
+  const adminOnlyTabs = new Set([
+    "/dashboard/logs",
+    "/dashboard/users",
+    "/dashboard/tiers",
+    "/dashboard/promotions",
+  ]);
   const visibleNavItems = navItems.filter((item) => {
-    if (item.href === "/dashboard/logs") return canAccessLogs;
-    if (item.href === "/dashboard/users") return canManageUsers;
+    if (adminOnlyTabs.has(item.href)) return isAdmin;
     return true;
   });
 

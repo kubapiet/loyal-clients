@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     }
 
     const role = (session.user as any).role;
-    if (role !== "COMPANY" && role !== "ADMIN") {
+    if (role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

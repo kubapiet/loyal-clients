@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import { format, isAfter, isBefore } from "date-fns";
 
 export default function PromotionsPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const { locale } = useLocale();
   const { toast } = useToast();
   const [promotions, setPromotions] = useState<any[]>([]);
@@ -29,8 +33,22 @@ export default function PromotionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [editingPromo, setEditingPromo] = useState<any>(null);
+  const role = (session?.user as any)?.role;
+  const hasAdminAccess = role === "ADMIN";
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!hasAdminAccess) {
+      toast({
+        title: locale === "pl" ? "Brak dostepu do promocji" : "No access to promotions",
+        variant: "destructive",
+      });
+      router.replace("/dashboard");
+    }
+  }, [hasAdminAccess, locale, router, status, toast]);
 
   async function fetchPromotions() {
+    if (status !== "authenticated" || !hasAdminAccess) return;
     try {
       const res = await fetch("/api/promotions");
       const data = await res.json();
@@ -41,7 +59,7 @@ export default function PromotionsPage() {
 
   useEffect(() => {
     fetchPromotions();
-  }, []);
+  }, [status, hasAdminAccess]);
 
   const now = new Date();
   const activePromotions = promotions.filter(
@@ -139,6 +157,14 @@ export default function PromotionsPage() {
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  if (status === "loading" || !hasAdminAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
     );
   }
 

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Loader2, Search, Eye } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,8 @@ const entityTypeOptions = ["", "CARD", "TRANSACTION", "TIER", "PROMOTION", "USER
 const actorRoleOptions = ["", "COMPANY", "ADMIN", "EMPLOYEE"] as const;
 
 export default function LogsPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const { locale } = useLocale();
   const { toast } = useToast();
   const [logs, setLogs] = useState<LogItem[]>([]);
@@ -54,8 +58,22 @@ export default function LogsPage() {
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<LogItem | null>(null);
+  const role = (session?.user as any)?.role;
+  const hasAdminAccess = role === "ADMIN";
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!hasAdminAccess) {
+      toast({
+        title: locale === "pl" ? "Brak dostepu do logow" : "No access to logs",
+        variant: "destructive",
+      });
+      router.replace("/dashboard");
+    }
+  }, [hasAdminAccess, locale, router, status, toast]);
 
   const fetchLogs = useCallback(async () => {
+    if (status !== "authenticated" || !hasAdminAccess) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -89,7 +107,7 @@ export default function LogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, action, entityType, actorRole, dateFrom, dateTo, locale, toast]);
+  }, [hasAdminAccess, page, search, action, entityType, actorRole, dateFrom, dateTo, locale, status, toast]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -126,6 +144,14 @@ export default function LogsPage() {
   function openDetails(log: LogItem) {
     setSelectedLog(log);
     setDetailsOpen(true);
+  }
+
+  if (status === "loading" || !hasAdminAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (

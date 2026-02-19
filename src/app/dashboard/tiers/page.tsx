@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +22,8 @@ import { t } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TiersPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const { locale } = useLocale();
   const { toast } = useToast();
   const [tiers, setTiers] = useState<any[]>([]);
@@ -27,8 +31,22 @@ export default function TiersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [editingTier, setEditingTier] = useState<any>(null);
+  const role = (session?.user as any)?.role;
+  const hasAdminAccess = role === "ADMIN";
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!hasAdminAccess) {
+      toast({
+        title: locale === "pl" ? "Brak dostepu do progow rabatowych" : "No access to discount tiers",
+        variant: "destructive",
+      });
+      router.replace("/dashboard");
+    }
+  }, [hasAdminAccess, locale, router, status, toast]);
 
   async function fetchTiers() {
+    if (status !== "authenticated" || !hasAdminAccess) return;
     try {
       const res = await fetch("/api/tiers");
       const data = await res.json();
@@ -39,7 +57,7 @@ export default function TiersPage() {
 
   useEffect(() => {
     fetchTiers();
-  }, []);
+  }, [status, hasAdminAccess]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -98,6 +116,14 @@ export default function TiersPage() {
   function openNew() {
     setEditingTier(null);
     setDialogOpen(true);
+  }
+
+  if (status === "loading" || !hasAdminAccess) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
