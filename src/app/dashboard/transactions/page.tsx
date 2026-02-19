@@ -323,8 +323,8 @@ export default function TransactionsPage() {
           className="pl-10"
           placeholder={
             locale === "pl"
-              ? "Szukaj po nazwisku lub numerze karty..."
-              : "Search by name or card number..."
+              ? "Szukaj po nazwisku, numerze karty lub opisie..."
+              : "Search by name, card number or description..."
           }
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}

@@ -19,18 +19,19 @@ export async function GET(req: NextRequest) {
 
     const search = searchParams.get("search");
 
-    const where = {
+    const where: any = {
       loyaltyCard: {
         companyId,
-        ...(search && {
-          OR: [
-            { firstName: { contains: search, mode: "insensitive" as const } },
-            { lastName: { contains: search, mode: "insensitive" as const } },
-            { cardNumber: { contains: search, mode: "insensitive" as const } },
-          ],
-        }),
       },
       ...(cardId && { loyaltyCardId: cardId }),
+      ...(search && {
+        OR: [
+          { description: { contains: search, mode: "insensitive" as const } },
+          { loyaltyCard: { firstName: { contains: search, mode: "insensitive" as const } } },
+          { loyaltyCard: { lastName: { contains: search, mode: "insensitive" as const } } },
+          { loyaltyCard: { cardNumber: { contains: search, mode: "insensitive" as const } } },
+        ],
+      }),
     };
 
     const sortBy = searchParams.get("sortBy") || "createdAt";
