@@ -88,7 +88,7 @@ export async function PUT(
         changes: buildChanges(
           existing as unknown as Record<string, unknown>,
           updatedCard as unknown as Record<string, unknown>,
-          ["firstName", "lastName", "email", "phone", "totalPoints"]
+          ["firstName", "lastName", "email", "phone", "city", "totalPoints"]
         ),
       });
 
@@ -137,7 +137,7 @@ export async function DELETE(
         changes: buildChanges(
           existing as unknown as Record<string, unknown>,
           null,
-          ["cardNumber", "firstName", "lastName", "email", "phone", "totalPoints"]
+          ["cardNumber", "firstName", "lastName", "email", "phone", "city", "totalPoints"]
         ),
       });
     });

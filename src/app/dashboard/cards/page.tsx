@@ -23,6 +23,7 @@ import { t } from "@/lib/i18n";
 import { formatPoints } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { CITY_OPTIONS } from "@/lib/cities";
 
 export default function CardsPage() {
   const { locale } = useLocale();
@@ -67,6 +68,7 @@ export default function CardsPage() {
           lastName: formData.get("lastName"),
           email: formData.get("email"),
           phone: formData.get("phone"),
+          city: formData.get("city"),
         }),
       });
 
@@ -128,6 +130,25 @@ export default function CardsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="phone">{t("cards.phone", locale)}</Label>
                     <Input id="phone" name="phone" type="tel" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">{t("cards.city", locale)} *</Label>
+                    <select
+                      id="city"
+                      name="city"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      required
+                      defaultValue=""
+                    >
+                      <option value="" disabled>
+                        {locale === "pl" ? "Wybierz miasto" : "Select city"}
+                      </option>
+                      {CITY_OPTIONS.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <DialogFooter>
