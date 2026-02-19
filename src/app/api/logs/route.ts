@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const allowedActions = new Set(["CREATE", "UPDATE", "DELETE"]);
-const allowedEntityTypes = new Set(["CARD", "TRANSACTION", "TIER", "PROMOTION"]);
+const allowedEntityTypes = new Set(["CARD", "TRANSACTION", "TIER", "PROMOTION", "USER"]);
 const allowedActorRoles = new Set(["COMPANY", "ADMIN", "EMPLOYEE"]);
 
 function parseDateStart(value: string) {

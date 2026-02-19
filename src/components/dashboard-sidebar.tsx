@@ -15,6 +15,7 @@ import {
   Layers,
   Megaphone,
   ClipboardList,
+  Users,
   LogOut,
   Moon,
   Sun,
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/dashboard/cards", icon: CreditCard, labelKey: "nav.cards" },
   { href: "/dashboard/transactions", icon: ArrowLeftRight, labelKey: "nav.transactions" },
   { href: "/dashboard/logs", icon: ClipboardList, labelKey: "nav.logs" },
+  { href: "/dashboard/users", icon: Users, labelKey: "nav.users" },
   { href: "/dashboard/tiers", icon: Layers, labelKey: "nav.tiers" },
   { href: "/dashboard/promotions", icon: Megaphone, labelKey: "nav.promotions" },
 ];
@@ -41,7 +43,12 @@ export function DashboardSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const role = (session?.user as any)?.role;
   const canAccessLogs = role === "COMPANY" || role === "ADMIN";
-  const visibleNavItems = navItems.filter((item) => item.href !== "/dashboard/logs" || canAccessLogs);
+  const canManageUsers = role === "ADMIN";
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.href === "/dashboard/logs") return canAccessLogs;
+    if (item.href === "/dashboard/users") return canManageUsers;
+    return true;
+  });
 
   return (
     <>

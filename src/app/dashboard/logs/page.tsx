@@ -24,7 +24,7 @@ type LogItem = {
   actorName: string | null;
   actorEmail: string | null;
   action: "CREATE" | "UPDATE" | "DELETE";
-  entityType: "CARD" | "TRANSACTION" | "TIER" | "PROMOTION";
+  entityType: "CARD" | "TRANSACTION" | "TIER" | "PROMOTION" | "USER";
   entityId: string;
   entityLabel: string | null;
   summary: string;
@@ -33,7 +33,7 @@ type LogItem = {
 };
 
 const actionOptions = ["", "CREATE", "UPDATE", "DELETE"] as const;
-const entityTypeOptions = ["", "CARD", "TRANSACTION", "TIER", "PROMOTION"] as const;
+const entityTypeOptions = ["", "CARD", "TRANSACTION", "TIER", "PROMOTION", "USER"] as const;
 const actorRoleOptions = ["", "COMPANY", "ADMIN", "EMPLOYEE"] as const;
 
 export default function LogsPage() {
@@ -114,6 +114,7 @@ export default function LogsPage() {
     TRANSACTION: t("logs.transaction", locale),
     TIER: t("logs.tier", locale),
     PROMOTION: t("logs.promotion", locale),
+    USER: t("logs.user", locale),
   };
 
   const actorRoleLabel: Record<string, string> = {

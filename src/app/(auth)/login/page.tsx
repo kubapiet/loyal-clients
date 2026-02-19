@@ -11,10 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreditCard, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/components/providers";
+import { t } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { locale } = useLocale();
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
@@ -79,6 +82,26 @@ export default function LoginPage() {
     setLoading(false);
   }
 
+  async function handleEmployeeLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+
+    const result = await signIn("employee-login", {
+      email: formData.get("employee-email") as string,
+      password: formData.get("employee-password") as string,
+      redirect: false,
+    });
+
+    setLoading(false);
+
+    if (result?.error) {
+      toast({ title: "Blad logowania", description: "Nieprawidlowy email lub haslo", variant: "destructive" });
+    } else {
+      router.push("/dashboard");
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
       <div className="w-full max-w-md">
@@ -88,8 +111,9 @@ export default function LoginPage() {
         </div>
 
         <Tabs defaultValue="company" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="company">Firma / Sklep</TabsTrigger>
+            <TabsTrigger value="employee">{t("auth.employee_panel", locale)}</TabsTrigger>
             <TabsTrigger value="customer">Klient</TabsTrigger>
           </TabsList>
 
@@ -121,6 +145,35 @@ export default function LoginPage() {
                       Zarejestruj się
                     </Link>
                   </p>
+                </CardFooter>
+              </form>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="employee">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("auth.employee_panel", locale)}</CardTitle>
+                <CardDescription>
+                  {locale === "pl" ? "Logowanie dla kont pracownikow i adminow" : "Login for employee and admin users"}
+                </CardDescription>
+              </CardHeader>
+              <form onSubmit={handleEmployeeLogin}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="employee-email">Email</Label>
+                    <Input id="employee-email" name="employee-email" type="email" placeholder="test@test.com" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="employee-password">Haslo</Label>
+                    <Input id="employee-password" name="employee-password" type="password" required />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t("auth.login", locale)}
+                  </Button>
                 </CardFooter>
               </form>
             </Card>

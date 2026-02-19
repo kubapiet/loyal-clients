@@ -2,7 +2,7 @@ const AUDIT_RETENTION_DAYS = 180;
 
 type AuditActorRole = "COMPANY" | "ADMIN" | "EMPLOYEE";
 type AuditAction = "CREATE" | "UPDATE" | "DELETE";
-type AuditEntityType = "CARD" | "TRANSACTION" | "TIER" | "PROMOTION";
+type AuditEntityType = "CARD" | "TRANSACTION" | "TIER" | "PROMOTION" | "USER";
 
 type SessionUserLike = {
   id?: string;
