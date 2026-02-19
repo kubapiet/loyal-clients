@@ -66,6 +66,7 @@ export default function CardsPage() {
         body: JSON.stringify({
           firstName: formData.get("firstName"),
           lastName: formData.get("lastName"),
+          cardNumber: formData.get("cardNumber"),
           email: formData.get("email"),
           phone: formData.get("phone"),
           city: formData.get("city"),
@@ -122,6 +123,14 @@ export default function CardsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="lastName">{t("cards.last_name", locale)} *</Label>
                     <Input id="lastName" name="lastName" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cardNumber">{t("cards.card_number", locale)}</Label>
+                    <Input
+                      id="cardNumber"
+                      name="cardNumber"
+                      placeholder={locale === "pl" ? "Pozostaw puste, aby wygenerowac automatycznie" : "Leave empty to auto-generate"}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">{t("cards.email", locale)} *</Label>
@@ -193,6 +202,7 @@ export default function CardsPage() {
                   <TableHead>{t("cards.last_name", locale)}</TableHead>
                   <TableHead className="hidden sm:table-cell">{t("cards.email", locale)}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("cards.phone", locale)}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("cards.city", locale)}</TableHead>
                   <TableHead className="text-right">{t("cards.points", locale)}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -211,6 +221,7 @@ export default function CardsPage() {
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{card.email}</TableCell>
                     <TableCell className="hidden md:table-cell">{card.phone || "-"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{card.city || "-"}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant="secondary">{formatPoints(card.totalPoints)} pkt</Badge>
                     </TableCell>

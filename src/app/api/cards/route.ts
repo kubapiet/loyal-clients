@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     const companyId = (session.user as any).companyId;
     const actor = buildAuditActor(session.user as any);
-    const { firstName, lastName, email, phone, city } = await req.json();
+    const { firstName, lastName, email, phone, city, cardNumber: cardNumberInput } = await req.json();
 
     if (!firstName || !lastName || !email) {
       return NextResponse.json(
@@ -88,7 +88,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Nieprawidlowe miasto" }, { status: 400 });
     }
 
-    const cardNumber = generateCardNumber();
+    const normalizedCardNumber = typeof cardNumberInput === "string"
+      ? cardNumberInput.trim()
+      : "";
+    const cardNumber = normalizedCardNumber || generateCardNumber();
+
+    const existingByCardNumber = await prisma.loyaltyCard.findUnique({
+      where: { cardNumber },
+      select: { id: true },
+    });
+
+    if (existingByCardNumber) {
+      return NextResponse.json({ error: "Numer karty juz istnieje" }, { status: 409 });
+    }
 
     const card = await prisma.$transaction(async (tx) => {
       const createdCard = await tx.loyaltyCard.create({
@@ -123,7 +135,10 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(card, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return NextResponse.json({ error: "Numer karty juz istnieje" }, { status: 409 });
+    }
     console.error("Create card error:", error);
     return NextResponse.json({ error: "Wystapil blad" }, { status: 500 });
   }

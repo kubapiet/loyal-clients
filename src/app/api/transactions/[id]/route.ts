@@ -57,7 +57,7 @@ export async function DELETE(
         changes: buildChanges(
           transaction as unknown as Record<string, unknown>,
           null,
-          ["amount", "points", "type", "description", "loyaltyCardId"]
+          ["amount", "points", "type", "description", "city", "loyaltyCardId"]
         ),
       });
     });

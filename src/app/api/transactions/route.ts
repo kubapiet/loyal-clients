@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
+import { isValidCity } from "@/lib/cities";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,7 +18,6 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const skip = (page - 1) * limit;
-
     const search = searchParams.get("search");
 
     const where: any = {
@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
       ...(search && {
         OR: [
           { description: { contains: search, mode: "insensitive" as const } },
+          { city: { contains: search, mode: "insensitive" as const } },
           { loyaltyCard: { firstName: { contains: search, mode: "insensitive" as const } } },
           { loyaltyCard: { lastName: { contains: search, mode: "insensitive" as const } } },
           { loyaltyCard: { cardNumber: { contains: search, mode: "insensitive" as const } } },
@@ -44,6 +45,8 @@ export async function GET(req: NextRequest) {
       points: { points: sortDir },
       type: { type: sortDir },
       customer: { loyaltyCard: { lastName: sortDir } },
+      city: { city: sortDir },
+      description: { description: sortDir },
     };
 
     const orderBy = allowedSortFields[sortBy] || { createdAt: "desc" };
@@ -74,7 +77,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("Get transactions error:", error);
-    return NextResponse.json({ error: "Wystąpił błąd" }, { status: 500 });
+    return NextResponse.json({ error: "Wystapil blad" }, { status: 500 });
   }
 }
 
@@ -87,16 +90,23 @@ export async function POST(req: NextRequest) {
 
     const companyId = (session.user as any).companyId;
     const actor = buildAuditActor(session.user as any);
-    const { loyaltyCardId, amount, type, description } = await req.json();
+    const { loyaltyCardId, amount, type, description, city } = await req.json();
 
     if (!loyaltyCardId || amount === undefined || !type) {
       return NextResponse.json(
-        { error: "ID karty, kwota i typ są wymagane" },
+        { error: "ID karty, kwota i typ sa wymagane" },
         { status: 400 }
       );
     }
 
-    // Verify card belongs to company
+    if (!city) {
+      return NextResponse.json({ error: "Miasto jest wymagane" }, { status: 400 });
+    }
+
+    if (!isValidCity(city)) {
+      return NextResponse.json({ error: "Nieprawidlowe miasto" }, { status: 400 });
+    }
+
     const card = await prisma.loyaltyCard.findFirst({
       where: { id: loyaltyCardId, companyId },
     });
@@ -116,6 +126,7 @@ export async function POST(req: NextRequest) {
           points,
           type,
           description: description || null,
+          city,
           loyaltyCardId,
         },
       });
@@ -139,7 +150,7 @@ export async function POST(req: NextRequest) {
         changes: buildChanges(
           null,
           createdTransaction as unknown as Record<string, unknown>,
-          ["amount", "points", "type", "description", "loyaltyCardId"]
+          ["amount", "points", "type", "description", "city", "loyaltyCardId"]
         ),
       });
 
@@ -149,6 +160,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(transaction, { status: 201 });
   } catch (error) {
     console.error("Create transaction error:", error);
-    return NextResponse.json({ error: "Wystąpił błąd" }, { status: 500 });
+    return NextResponse.json({ error: "Wystapil blad" }, { status: 500 });
   }
 }

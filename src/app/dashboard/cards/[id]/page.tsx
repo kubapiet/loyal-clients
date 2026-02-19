@@ -26,6 +26,7 @@ import { formatCurrency, formatPoints } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import Link from "next/link";
+import { CITY_OPTIONS } from "@/lib/cities";
 
 export default function CardDetailPage() {
   const params = useParams();
@@ -79,6 +80,7 @@ export default function CardDetailPage() {
           amount: parseFloat(formData.get("amount") as string),
           type: formData.get("type"),
           description: formData.get("description"),
+          city: formData.get("city"),
         }),
       });
 
@@ -294,6 +296,25 @@ export default function CardDetailPage() {
                   <div className="space-y-2">
                     <Label htmlFor="description">{t("transactions.description", locale)}</Label>
                     <Input id="description" name="description" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tx-city">{t("cards.city", locale)} *</Label>
+                    <select
+                      id="tx-city"
+                      name="city"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      required
+                      defaultValue=""
+                    >
+                      <option value="" disabled>
+                        {locale === "pl" ? "Wybierz miasto" : "Select city"}
+                      </option>
+                      {CITY_OPTIONS.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <DialogFooter>

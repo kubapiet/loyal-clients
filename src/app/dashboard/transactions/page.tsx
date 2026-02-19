@@ -21,6 +21,7 @@ import { t } from "@/lib/i18n";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { CITY_OPTIONS } from "@/lib/cities";
 
 export default function TransactionsPage() {
   const { locale } = useLocale();
@@ -112,6 +113,7 @@ export default function TransactionsPage() {
           amount: parseFloat(formData.get("amount") as string),
           type: formData.get("type"),
           description: formData.get("description"),
+          city: formData.get("city"),
         }),
       });
       if (res.ok) {
@@ -303,6 +305,27 @@ export default function TransactionsPage() {
                 <Label htmlFor="tx-desc">{t("transactions.description", locale)}</Label>
                 <Input id="tx-desc" name="description" />
               </div>
+
+              {/* City */}
+              <div className="space-y-2">
+                <Label htmlFor="tx-city">{t("cards.city", locale)} *</Label>
+                <select
+                  id="tx-city"
+                  name="city"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  required
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    {locale === "pl" ? "Wybierz miasto" : "Select city"}
+                  </option>
+                  {CITY_OPTIONS.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -358,7 +381,12 @@ export default function TransactionsPage() {
                   <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("points")}>
                     <span className="inline-flex items-center justify-end w-full">{t("transactions.points", locale)}<SortIcon field="points" /></span>
                   </TableHead>
-                  <TableHead className="hidden sm:table-cell">{t("transactions.description", locale)}</TableHead>
+                  <TableHead className="hidden sm:table-cell cursor-pointer select-none" onClick={() => toggleSort("city")}>
+                    <span className="inline-flex items-center">{t("cards.city", locale)}<SortIcon field="city" /></span>
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell cursor-pointer select-none" onClick={() => toggleSort("description")}>
+                    <span className="inline-flex items-center">{t("transactions.description", locale)}<SortIcon field="description" /></span>
+                  </TableHead>
                   <TableHead className="w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -381,6 +409,7 @@ export default function TransactionsPage() {
                     <TableCell className="text-right font-medium">
                       {tx.points >= 0 ? "+" : ""}{tx.points}
                     </TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground">{tx.city || "-"}</TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground">{tx.description || "-"}</TableCell>
                     <TableCell className="text-right">
                       <Button
