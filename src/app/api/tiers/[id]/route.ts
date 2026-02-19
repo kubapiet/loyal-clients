@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
 
 export async function PUT(
   req: NextRequest,
@@ -14,6 +15,7 @@ export async function PUT(
     }
 
     const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
     const { minPoints, discountPercent, label } = await req.json();
 
     const existing = await prisma.discountTier.findFirst({
@@ -24,13 +26,33 @@ export async function PUT(
       return NextResponse.json({ error: "Próg nie znaleziony" }, { status: 404 });
     }
 
-    const tier = await prisma.discountTier.update({
-      where: { id: params.id },
-      data: {
-        minPoints: parseInt(minPoints.toString()),
-        discountPercent: parseFloat(discountPercent.toString()),
-        label: label || null,
-      },
+    const tier = await prisma.$transaction(async (tx) => {
+      const updatedTier = await tx.discountTier.update({
+        where: { id: params.id },
+        data: {
+          minPoints: parseInt(minPoints.toString()),
+          discountPercent: parseFloat(discountPercent.toString()),
+          label: label || null,
+        },
+      });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
+        companyId,
+        ...actor,
+        action: "UPDATE",
+        entityType: "TIER",
+        entityId: updatedTier.id,
+        entityLabel: `${updatedTier.minPoints} pts / ${updatedTier.discountPercent}%`,
+        summary: `Updated discount tier ${updatedTier.id}`,
+        changes: buildChanges(
+          existing as unknown as Record<string, unknown>,
+          updatedTier as unknown as Record<string, unknown>,
+          ["minPoints", "discountPercent", "label"]
+        ),
+      });
+
+      return updatedTier;
     });
 
     return NextResponse.json(tier);
@@ -51,6 +73,7 @@ export async function DELETE(
     }
 
     const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
     const existing = await prisma.discountTier.findFirst({
       where: { id: params.id, companyId },
     });
@@ -59,7 +82,25 @@ export async function DELETE(
       return NextResponse.json({ error: "Próg nie znaleziony" }, { status: 404 });
     }
 
-    await prisma.discountTier.delete({ where: { id: params.id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.discountTier.delete({ where: { id: params.id } });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
+        companyId,
+        ...actor,
+        action: "DELETE",
+        entityType: "TIER",
+        entityId: existing.id,
+        entityLabel: `${existing.minPoints} pts / ${existing.discountPercent}%`,
+        summary: `Deleted discount tier ${existing.id}`,
+        changes: buildChanges(
+          existing as unknown as Record<string, unknown>,
+          null,
+          ["minPoints", "discountPercent", "label"]
+        ),
+      });
+    });
 
     return NextResponse.json({ message: "Próg usunięty" });
   } catch (error) {

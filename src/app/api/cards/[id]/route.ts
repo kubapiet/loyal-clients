@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
 
 export async function GET(
   req: NextRequest,
@@ -58,6 +59,7 @@ export async function PUT(
     }
 
     const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
     const { firstName, lastName, email, phone } = await req.json();
 
     const existing = await prisma.loyaltyCard.findFirst({
@@ -68,9 +70,29 @@ export async function PUT(
       return NextResponse.json({ error: "Karta nie znaleziona" }, { status: 404 });
     }
 
-    const card = await prisma.loyaltyCard.update({
-      where: { id: params.id },
-      data: { firstName, lastName, email, phone },
+    const card = await prisma.$transaction(async (tx) => {
+      const updatedCard = await tx.loyaltyCard.update({
+        where: { id: params.id },
+        data: { firstName, lastName, email, phone },
+      });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
+        companyId,
+        ...actor,
+        action: "UPDATE",
+        entityType: "CARD",
+        entityId: updatedCard.id,
+        entityLabel: `${updatedCard.firstName} ${updatedCard.lastName} (${updatedCard.cardNumber})`,
+        summary: `Updated loyalty card ${updatedCard.cardNumber}`,
+        changes: buildChanges(
+          existing as unknown as Record<string, unknown>,
+          updatedCard as unknown as Record<string, unknown>,
+          ["firstName", "lastName", "email", "phone", "totalPoints"]
+        ),
+      });
+
+      return updatedCard;
     });
 
     return NextResponse.json(card);
@@ -91,6 +113,7 @@ export async function DELETE(
     }
 
     const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
     const existing = await prisma.loyaltyCard.findFirst({
       where: { id: params.id, companyId },
     });
@@ -99,7 +122,25 @@ export async function DELETE(
       return NextResponse.json({ error: "Karta nie znaleziona" }, { status: 404 });
     }
 
-    await prisma.loyaltyCard.delete({ where: { id: params.id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.loyaltyCard.delete({ where: { id: params.id } });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
+        companyId,
+        ...actor,
+        action: "DELETE",
+        entityType: "CARD",
+        entityId: existing.id,
+        entityLabel: `${existing.firstName} ${existing.lastName} (${existing.cardNumber})`,
+        summary: `Deleted loyalty card ${existing.cardNumber}`,
+        changes: buildChanges(
+          existing as unknown as Record<string, unknown>,
+          null,
+          ["cardNumber", "firstName", "lastName", "email", "phone", "totalPoints"]
+        ),
+      });
+    });
 
     return NextResponse.json({ message: "Karta usunięta" });
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
 
 export async function GET(req: NextRequest) {
   try {
@@ -85,6 +86,7 @@ export async function POST(req: NextRequest) {
     }
 
     const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
     const { loyaltyCardId, amount, type, description } = await req.json();
 
     if (!loyaltyCardId || amount === undefined || !type) {
@@ -107,22 +109,41 @@ export async function POST(req: NextRequest) {
       ? -Math.abs(Math.round(amount))
       : Math.abs(Math.round(amount));
 
-    const transaction = await prisma.transaction.create({
-      data: {
-        amount: parseFloat(amount.toString()),
-        points,
-        type,
-        description: description || null,
-        loyaltyCardId,
-      },
-    });
+    const transaction = await prisma.$transaction(async (tx) => {
+      const createdTransaction = await tx.transaction.create({
+        data: {
+          amount: parseFloat(amount.toString()),
+          points,
+          type,
+          description: description || null,
+          loyaltyCardId,
+        },
+      });
 
-    // Update card total points
-    await prisma.loyaltyCard.update({
-      where: { id: loyaltyCardId },
-      data: {
-        totalPoints: { increment: points },
-      },
+      await tx.loyaltyCard.update({
+        where: { id: loyaltyCardId },
+        data: {
+          totalPoints: { increment: points },
+        },
+      });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
+        companyId,
+        ...actor,
+        action: "CREATE",
+        entityType: "TRANSACTION",
+        entityId: createdTransaction.id,
+        entityLabel: `${card.cardNumber} (${type})`,
+        summary: `Created transaction for card ${card.cardNumber}`,
+        changes: buildChanges(
+          null,
+          createdTransaction as unknown as Record<string, unknown>,
+          ["amount", "points", "type", "description", "loyaltyCardId"]
+        ),
+      });
+
+      return createdTransaction;
     });
 
     return NextResponse.json(transaction, { status: 201 });

@@ -23,6 +23,7 @@ model Company {
   loyaltyCards  LoyaltyCard[]
   discountTiers DiscountTier[]
   promotions    Promotion[]
+  auditLogs     AuditLog[]
 
   @@index([email])
 }
@@ -134,4 +135,47 @@ model MagicLink {
 
   @@index([token])
   @@index([email])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum AuditEntityType {
+  CARD
+  TRANSACTION
+  TIER
+  PROMOTION
+}
+
+enum AuditActorRole {
+  COMPANY
+  ADMIN
+  EMPLOYEE
+}
+
+model AuditLog {
+  id         String          @id @default(cuid())
+  companyId  String
+  actorId    String
+  actorRole  AuditActorRole
+  actorName  String?
+  actorEmail String?
+  action     AuditAction
+  entityType AuditEntityType
+  entityId   String
+  entityLabel String?
+  summary    String
+  changes    Json?
+  createdAt  DateTime        @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, action])
+  @@index([companyId, entityType])
+  @@index([companyId, actorRole])
+  @@index([companyId, entityId])
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
 
 export async function GET(req: NextRequest) {
   try {
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
     const { minPoints, discountPercent, label } = await req.json();
 
     if (minPoints === undefined || discountPercent === undefined) {
@@ -41,13 +43,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const tier = await prisma.discountTier.create({
-      data: {
-        minPoints: parseInt(minPoints.toString()),
-        discountPercent: parseFloat(discountPercent.toString()),
-        label: label || null,
+    const tier = await prisma.$transaction(async (tx) => {
+      const createdTier = await tx.discountTier.create({
+        data: {
+          minPoints: parseInt(minPoints.toString()),
+          discountPercent: parseFloat(discountPercent.toString()),
+          label: label || null,
+          companyId,
+        },
+      });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
         companyId,
-      },
+        ...actor,
+        action: "CREATE",
+        entityType: "TIER",
+        entityId: createdTier.id,
+        entityLabel: `${createdTier.minPoints} pts / ${createdTier.discountPercent}%`,
+        summary: `Created discount tier ${createdTier.minPoints} points`,
+        changes: buildChanges(
+          null,
+          createdTier as unknown as Record<string, unknown>,
+          ["minPoints", "discountPercent", "label"]
+        ),
+      });
+
+      return createdTier;
     });
 
     return NextResponse.json(tier, { status: 201 });

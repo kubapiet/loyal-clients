@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateCardNumber } from "@/lib/utils";
 import QRCode from "qrcode";
+import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
 
 export async function GET(req: NextRequest) {
   try {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
     }
 
     const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
     const { firstName, lastName, email, phone } = await req.json();
 
     if (!firstName || !lastName || !email) {
@@ -79,15 +81,35 @@ export async function POST(req: NextRequest) {
 
     const cardNumber = generateCardNumber();
     
-    const card = await prisma.loyaltyCard.create({
-      data: {
-        cardNumber,
-        firstName,
-        lastName,
-        email,
-        phone: phone || null,
+    const card = await prisma.$transaction(async (tx) => {
+      const createdCard = await tx.loyaltyCard.create({
+        data: {
+          cardNumber,
+          firstName,
+          lastName,
+          email,
+          phone: phone || null,
+          companyId,
+        },
+      });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
         companyId,
-      },
+        ...actor,
+        action: "CREATE",
+        entityType: "CARD",
+        entityId: createdCard.id,
+        entityLabel: `${createdCard.firstName} ${createdCard.lastName} (${createdCard.cardNumber})`,
+        summary: `Created loyalty card ${createdCard.cardNumber}`,
+        changes: buildChanges(
+          null,
+          createdCard as unknown as Record<string, unknown>,
+          ["cardNumber", "firstName", "lastName", "email", "phone", "totalPoints"]
+        ),
+      });
+
+      return createdCard;
     });
 
     return NextResponse.json(card, { status: 201 });

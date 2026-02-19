@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
 
 export async function GET(req: NextRequest) {
   try {
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
     const { title, description, startDate, endDate, couponCode } = await req.json();
 
     if (!title || !description || !startDate || !endDate) {
@@ -51,15 +53,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const promotion = await prisma.promotion.create({
-      data: {
-        title,
-        description,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        couponCode: couponCode || null,
+    const promotion = await prisma.$transaction(async (tx) => {
+      const createdPromotion = await tx.promotion.create({
+        data: {
+          title,
+          description,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          couponCode: couponCode || null,
+          companyId,
+        },
+      });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
         companyId,
-      },
+        ...actor,
+        action: "CREATE",
+        entityType: "PROMOTION",
+        entityId: createdPromotion.id,
+        entityLabel: createdPromotion.title,
+        summary: `Created promotion ${createdPromotion.title}`,
+        changes: buildChanges(
+          null,
+          createdPromotion as unknown as Record<string, unknown>,
+          ["title", "description", "startDate", "endDate", "couponCode"]
+        ),
+      });
+
+      return createdPromotion;
     });
 
     return NextResponse.json(promotion, { status: 201 });

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { useLocale } from "@/components/providers";
@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   Layers,
   Megaphone,
+  ClipboardList,
   LogOut,
   Moon,
   Sun,
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, labelKey: "nav.dashboard" },
   { href: "/dashboard/cards", icon: CreditCard, labelKey: "nav.cards" },
   { href: "/dashboard/transactions", icon: ArrowLeftRight, labelKey: "nav.transactions" },
+  { href: "/dashboard/logs", icon: ClipboardList, labelKey: "nav.logs" },
   { href: "/dashboard/tiers", icon: Layers, labelKey: "nav.tiers" },
   { href: "/dashboard/promotions", icon: Megaphone, labelKey: "nav.promotions" },
 ];
@@ -35,7 +37,11 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const { locale, setLocale } = useLocale();
   const { theme, setTheme } = useTheme();
+  const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const role = (session?.user as any)?.role;
+  const canAccessLogs = role === "COMPANY" || role === "ADMIN";
+  const visibleNavItems = navItems.filter((item) => item.href !== "/dashboard/logs" || canAccessLogs);
 
   return (
     <>
@@ -73,7 +79,7 @@ export function DashboardSidebar() {
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
