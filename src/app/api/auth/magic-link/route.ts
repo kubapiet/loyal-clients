@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { sendMagicLinkEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,19 +38,24 @@ export async function POST(req: NextRequest) {
 
     const magicLinkUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/customer/verify?token=${token}`;
 
-    try {
-      await sendMagicLinkEmail(card.email, magicLinkUrl);
-    } catch (emailError) {
-      console.error("Failed to send magic link email:", emailError);
-      return NextResponse.json(
-        { error: "Nie udało się wysłać maila z linkiem" },
-        { status: 500 }
-      );
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const { sendMagicLinkEmail } = await import("@/lib/email");
+        await sendMagicLinkEmail(card.email, magicLinkUrl);
+      } catch (emailError) {
+        console.error("Failed to send magic link email:", emailError);
+        return NextResponse.json(
+          { error: "Nie udało się wysłać maila z linkiem" },
+          { status: 500 }
+        );
+      }
+    } else {
+      console.log("RESEND_API_KEY not set, skipping email. Magic link:", magicLinkUrl);
     }
 
     return NextResponse.json({
       message: "Link logowania został wysłany na email",
-      ...(process.env.NODE_ENV === "development" && { debugToken: token }),
+      ...(process.env.NODE_ENV === "development" && !process.env.RESEND_API_KEY && { debugToken: token }),
     });
   } catch (error) {
     console.error("Magic link error:", error);

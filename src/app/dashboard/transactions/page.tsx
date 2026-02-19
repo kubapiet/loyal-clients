@@ -358,6 +358,7 @@ export default function TransactionsPage() {
                   <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("points")}>
                     <span className="inline-flex items-center justify-end w-full">{t("transactions.points", locale)}<SortIcon field="points" /></span>
                   </TableHead>
+                  <TableHead className="hidden sm:table-cell">{t("transactions.description", locale)}</TableHead>
                   <TableHead className="w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -380,6 +381,7 @@ export default function TransactionsPage() {
                     <TableCell className="text-right font-medium">
                       {tx.points >= 0 ? "+" : ""}{tx.points}
                     </TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground">{tx.description || "-"}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
