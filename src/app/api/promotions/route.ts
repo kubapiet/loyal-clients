@@ -1,0 +1,100 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const role = (session.user as any).role;
+    if (role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const companyId = (session.user as any).companyId;
+    const { searchParams } = new URL(req.url);
+    const activeOnly = searchParams.get("active") === "true";
+
+    const where = {
+      companyId,
+      ...(activeOnly && {
+        startDate: { lte: new Date() },
+        endDate: { gte: new Date() },
+      }),
+    };
+
+    const promotions = await prisma.promotion.findMany({
+      where,
+      orderBy: { startDate: "desc" },
+    });
+
+    return NextResponse.json(promotions);
+  } catch (error) {
+    console.error("Get promotions error:", error);
+    return NextResponse.json({ error: "Wystąpił błąd" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const role = (session.user as any).role;
+    if (role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const companyId = (session.user as any).companyId;
+    const actor = buildAuditActor(session.user as any);
+    const { title, description, startDate, endDate, couponCode } = await req.json();
+
+    if (!title || !description || !startDate || !endDate) {
+      return NextResponse.json(
+        { error: "Tytuł, opis, data rozpoczęcia i data zakończenia są wymagane" },
+        { status: 400 }
+      );
+    }
+
+    const promotion = await prisma.$transaction(async (tx) => {
+      const createdPromotion = await tx.promotion.create({
+        data: {
+          title,
+          description,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          couponCode: couponCode || null,
+          companyId,
+        },
+      });
+
+      await enforceAuditRetention(tx, companyId);
+      await writeAuditLog(tx, {
+        companyId,
+        ...actor,
+        action: "CREATE",
+        entityType: "PROMOTION",
+        entityId: createdPromotion.id,
+        entityLabel: createdPromotion.title,
+        summary: `Created promotion ${createdPromotion.title}`,
+        changes: buildChanges(
+          null,
+          createdPromotion as unknown as Record<string, unknown>,
+          ["title", "description", "startDate", "endDate", "couponCode"]
+        ),
+      });
+
+      return createdPromotion;
+    });
+
+    return NextResponse.json(promotion, { status: 201 });
+  } catch (error) {
+    console.error("Create promotion error:", error);
+    return NextResponse.json({ error: "Wystąpił błąd" }, { status: 500 });
+  }
+}
