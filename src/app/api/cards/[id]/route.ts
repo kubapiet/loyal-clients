@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { DiscountTier } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildAuditActor, buildChanges, enforceAuditRetention, writeAuditLog } from "@/lib/audit-log";
@@ -35,11 +36,11 @@ export async function GET(
     });
 
     const currentTier = discountTiers
-      .filter((tier) => card.totalPoints >= tier.minPoints)
+      .filter((tier: DiscountTier) => card.totalPoints >= tier.minPoints)
       .at(-1) ?? null;
 
     const nextTier = discountTiers
-      .find((tier) => tier.minPoints > card.totalPoints) ?? null;
+      .find((tier: DiscountTier) => tier.minPoints > card.totalPoints) ?? null;
 
     return NextResponse.json({ ...card, discountTier: currentTier, nextDiscountTier: nextTier });
   } catch (error) {
